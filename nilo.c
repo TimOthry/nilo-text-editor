@@ -17,27 +17,20 @@ struct termios orig_termios;
 
 /*** terminal ***/
 
-/*
-* Error handler - prints te message
-*/
 void die(const char *s) {
+    write(STDOUT_FILENO, "\x1b[2J", 4);
+    write(STDOUT_FILENO, "\x1b[H", 3);
+    
+    // Error handler - prints message
     perror(s);
     exit(1);
 }
 
-/*
-* When the program exits, raw mode is disabled and
-* terminal is reset back to normal.
-*/
 void disableRawMode(void) {
      if (tcsetattr(STDERR_FILENO, TCSAFLUSH, &orig_termios) == -1)
         die("tcsetattr");
 }
 
-/* 
-* This function makes it so that user input isnt 
-* displayed in the terminal. Enables raw mode.
-*/
 void enableRawMode(void) {
     // Get original terminal attribute
     if (tcgetattr(STDIN_FILENO, &orig_termios) == - 1) die("tcgetattr");
@@ -57,11 +50,8 @@ void enableRawMode(void) {
     if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw) == -1) die("tcsetattr");
 }
 
-
-/* 
-* Waits for one keypress to return it
-*/
 char editorReadKey(void) {
+    // Waits for one keypress to return it
     int nread;
     char c;
     while ((nread = read(STDIN_FILENO, &c, 1)) != 1) {
@@ -71,16 +61,24 @@ char editorReadKey(void) {
     return c;
 }
 
+/*** output ***/
+
+void editorRefreshScreen(void) {
+    // Escape sequence <esc>[2J, clears terminal
+    write(STDOUT_FILENO, "\x1b[2J", 4);
+    // Puts cursor to top of terminal
+    write(STDOUT_FILENO, "\x1b[H", 3);
+}
+
 /*** input ***/
 
-/* 
-* Handles the key pressed
-*/
 void editorProcessKeypress(void) {
     char c = editorReadKey();
     // Exits when ctrl-q is pressed
     switch (c) {
         case CTRL_KEY('q'):
+            write(STDOUT_FILENO, "\x1b[2J", 4);
+            write(STDOUT_FILENO, "\x1b[H", 3);
             exit(0);
             break;
     }
@@ -92,6 +90,7 @@ int main(void) {
     enableRawMode();
 
     while (1) {
+        editorRefreshScreen();
         editorProcessKeypress();
     }
 
