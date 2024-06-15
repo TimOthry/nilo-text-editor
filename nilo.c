@@ -7,6 +7,10 @@
 #include <termios.h>
 #include <unistd.h>
 
+/*** defines ****/
+
+#define CTRL_KEY(k) ((k) & 0x1f) // Hex number 31 mask
+
 /*** data ***/
 
 struct termios orig_termios;
@@ -36,7 +40,7 @@ void disableRawMode(void) {
 */
 void enableRawMode(void) {
     // Get original terminal attribute
-     if (tcgetattr(STDIN_FILENO, &orig_termios) == - 1) die("tcgetattr");
+    if (tcgetattr(STDIN_FILENO, &orig_termios) == - 1) die("tcgetattr");
     atexit(disableRawMode);
 
     // Runs a mask to set local/input flags on or off
@@ -53,19 +57,42 @@ void enableRawMode(void) {
     if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw) == -1) die("tcsetattr");
 }
 
+
+/* 
+* Waits for one keypress to return it
+*/
+char editorReadKey(void) {
+    int nread;
+    char c;
+    while ((nread = read(STDIN_FILENO, &c, 1)) != 1) {
+        // If failure, exception handled
+        if (nread == -1 && errno != EAGAIN) die("read");
+    }
+    return c;
+}
+
+/*** input ***/
+
+/* 
+* Handles the key pressed
+*/
+void editorProcessKeypress(void) {
+    char c = editorReadKey();
+    // Exits when ctrl-q is pressed
+    switch (c) {
+        case CTRL_KEY('q'):
+            exit(0);
+            break;
+    }
+}
+
+/*** init ***/
+
 int main(void) {
     enableRawMode();
 
     while (1) {
-        char c = '\0';
-        // Reads 1 byte (user input), stores to variable c
-        if (read(STDIN_FILENO, &c, 1) == -1 && errno != EAGAIN) die("read");
-        if (iscntrl(c)) { // If control char
-            printf("%d\r\n", c);
-        } else {
-            printf("%d ('%c')\r\n", c, c);
-        }
-        if (c == 'q') break;
+        editorProcessKeypress();
     }
 
     return 0;
