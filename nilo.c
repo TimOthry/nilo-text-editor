@@ -13,7 +13,11 @@
 
 /*** data ***/
 
-struct termios orig_termios;
+struct editorConfig {
+    struct termios orig_termios;
+};
+
+struct editorConfig E;
 
 /*** terminal ***/
 
@@ -27,17 +31,17 @@ void die(const char *s) {
 }
 
 void disableRawMode(void) {
-     if (tcsetattr(STDERR_FILENO, TCSAFLUSH, &orig_termios) == -1)
+     if (tcsetattr(STDERR_FILENO, TCSAFLUSH, &E.orig_termios) == -1)
         die("tcsetattr");
 }
 
 void enableRawMode(void) {
     // Get original terminal attribute
-    if (tcgetattr(STDIN_FILENO, &orig_termios) == - 1) die("tcgetattr");
+    if (tcgetattr(STDIN_FILENO, &E.orig_termios) == - 1) die("tcgetattr");
     atexit(disableRawMode);
 
     // Runs a mask to set local/input flags on or off
-    struct termios raw = orig_termios;
+    struct termios raw = E.orig_termios;
     raw.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
     raw.c_oflag &= ~(OPOST);
     raw.c_cflag |= (CS8);
@@ -63,10 +67,20 @@ char editorReadKey(void) {
 
 /*** output ***/
 
+void editorDrawRows(void) {
+    int y;
+    for (y = 0; y < 24; y++) {
+        write(STDIN_FILENO, "~\r\n", 3);
+    }
+}
+
 void editorRefreshScreen(void) {
     // Escape sequence <esc>[2J, clears terminal
     write(STDOUT_FILENO, "\x1b[2J", 4);
     // Puts cursor to top of terminal
+    write(STDOUT_FILENO, "\x1b[H", 3);
+
+    editorDrawRows();
     write(STDOUT_FILENO, "\x1b[H", 3);
 }
 
