@@ -25,7 +25,7 @@ void die(const char *s) {
 * When the program exits, raw mode is disabled and
 * terminal is reset back to normal.
 */
-void disableRawMode() {
+void disableRawMode(void) {
      if (tcsetattr(STDERR_FILENO, TCSAFLUSH, &orig_termios) == -1)
         die("tcsetattr");
 }
@@ -34,7 +34,7 @@ void disableRawMode() {
 * This function makes it so that user input isnt 
 * displayed in the terminal. Enables raw mode.
 */
-void enableRawMode() {
+void enableRawMode(void) {
     // Get original terminal attribute
      if (tcgetattr(STDIN_FILENO, &orig_termios) == - 1) die("tcgetattr");
     atexit(disableRawMode);
@@ -53,7 +53,7 @@ void enableRawMode() {
     if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw) == -1) die("tcsetattr");
 }
 
-int main() {
+int main(void) {
     enableRawMode();
 
     while (1) {
