@@ -68,11 +68,37 @@ char editorReadKey(void) {
     return c;
 }
 
+int getCursorPosition(int *rows, int *cols) {
+    char buf[32];
+    unsigned int i = 0;
+
+    // Escape sequence <esc>[6n, cursor position report
+
+    // If sequence reponse is not 4 bytes, returns -1
+    if (write(STDOUT_FILENO, "\x1b[6n", 4) != 4) return -1;
+
+    // Reads response into buffer
+    while (i < sizeof(buf) - 1) {
+        if (read(STDOUT_FILENO, &buf[i], 1) != 1) break;
+        if (buf[i] == 'R') break;
+        i++;
+    }
+    // Ensure string ends in '0' byte and skip first character
+    buf[i] = '\0';
+    // Ensures that response in the the expected format
+    if (buf[0] != '\x1b' || buf[1] != '[') return -1;
+    if (sscanf(&buf[2], "%d;%d", rows, cols) != 2) return -1;
+
+    return 0;
+}
+
 int getWindowSize(int *rows, int *cols) {
     struct winsize ws;
     // Returns -1 if obtaining window size fails
     if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == -1 || ws.ws_col == 0) {
-        return -1;
+        if (write(STDOUT_FILENO, "\x1b[999C\x1b[999B", 12) != 12) return -1;
+        editorReadKey();
+        return getCursorPosition(rows, cols);
     } else {
         *cols = ws.ws_col;
         *rows = ws.ws_row;
@@ -115,7 +141,7 @@ void editorProcessKeypress(void) {
 
 /*** init ***/
 
-void initEditor() {
+void initEditor(void) {
     if (getWindowSize(&E.screenrows, &E.screencols) == -1) die ("getWindowSize");
 }
 
